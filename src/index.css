@@ -1,2 +1,13 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+.markdown-body pre {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-x: hidden !important;
+}
+
+.markdown-body code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
