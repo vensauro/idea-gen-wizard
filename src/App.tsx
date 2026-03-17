@@ -677,7 +677,7 @@ ${aiPitch ? `### Anexo 4: Insights Pitch\n${aiPitch}\n` : ''}
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 text-indigo-600">
             <Lightbulb className="w-6 h-6" />
-            <span className="font-bold text-lg tracking-tight text-slate-900">Idea Generator Wizard</span>
+            <span className="font-bold text-lg tracking-tight text-slate-900">Assistente de Inovação com IA</span>
           </div>
           <div className="text-sm font-medium text-slate-500">
             Passo {currentStep} de {STEPS.length}
