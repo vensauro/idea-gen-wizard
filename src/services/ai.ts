@@ -38,3 +38,42 @@ export async function generateInsights(prompt: string, maxRetries = 3) {
     }
   }
 }
+
+export async function* streamInsights(prompt: string, maxRetries = 3) {
+  let retries = 0;
+  while (retries <= maxRetries) {
+    try {
+      const result = await ai.models.generateContentStream({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+      });
+
+      for await (const chunk of (result as any)) {
+        const text = chunk.text;
+        if (text) yield text;
+      }
+      return;
+    } catch (error: any) {
+      console.error("Error streaming insights:", error);
+      
+      const isRateLimit = error.status === 429 || 
+                          error.message?.includes('429') || 
+                          error.message?.includes('RESOURCE_EXHAUSTED') ||
+                          error.message?.includes('quota');
+                          
+      if (isRateLimit) {
+        if (retries < maxRetries) {
+          const waitTime = Math.pow(2, retries) * 2000 + Math.random() * 1000;
+          console.log(`Rate limit hit. Retrying in ${Math.round(waitTime/1000)}s...`);
+          await delay(waitTime);
+          retries++;
+          continue;
+        } else {
+          throw new Error("O limite de uso da IA foi atingido. Por favor, aguarde alguns instantes e tente novamente.");
+        }
+      }
+      
+      throw new Error(error.message || "Falha ao gerar insights. Tente novamente.");
+    }
+  }
+}

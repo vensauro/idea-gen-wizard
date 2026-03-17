@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FormState, Track, initialState } from './types';
-import { generateInsights } from './services/ai';
+import { generateInsights, streamInsights } from './services/ai';
 import { Loader2, Sparkles, ArrowRight, ArrowLeft, CheckCircle, FileText, Copy, Lightbulb, Users, Target, Activity, Rocket, Presentation, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSlug from 'rehype-slug';
@@ -59,14 +59,28 @@ const AIAssistantField = ({
         finalPrompt = `${prompt}\n\nSugestões anteriores geradas por você:\n${aiValue || ''}\n\nInstrução adicional: ${extraPrompt}`;
       }
 
-      const result = await generateInsights(finalPrompt);
-      
-      if (extraPrompt === 'REFINE') {
-        onChange(result);
-      } else {
-        const newSuggestion = extraPrompt && aiValue ? `${aiValue}\n\n---\n\n${result}` : result;
-        if (onAiSuggestion) {
-          onAiSuggestion(newSuggestion);
+      const isRefine = extraPrompt === 'REFINE';
+      let accumulatedResponse = "";
+
+      // Clear previous value if starting a new generation (non-extraPrompt insight)
+      if (!isRefine && !extraPrompt && onAiSuggestion) {
+        onAiSuggestion("");
+      }
+
+      const stream = streamInsights(finalPrompt);
+      for await (const chunk of stream) {
+        accumulatedResponse += chunk;
+        
+        if (isRefine) {
+          onChange(accumulatedResponse);
+        } else {
+          const displayValue = extraPrompt && aiValue 
+            ? `${aiValue}\n\n---\n\n${accumulatedResponse}` 
+            : accumulatedResponse;
+          
+          if (onAiSuggestion) {
+            onAiSuggestion(displayValue);
+          }
         }
       }
     } catch (err: any) {
