@@ -8,17 +8,27 @@ export interface FormState {
 
   // Processos
   descricao_problema_processo: string;
+  ai_descricao_problema_processo?: string;
   causas_processo: string;
+  ai_causas_processo?: string;
   solucao_curto_prazo_processo: string;
+  ai_solucao_curto_prazo_processo?: string;
   solucao_medio_prazo_processo: string;
+  ai_solucao_medio_prazo_processo?: string;
   pitch_processo: string;
+  ai_pitch_processo?: string;
 
   // Mercado
   descricao_desafio_mercado: string;
+  ai_descricao_desafio_mercado?: string;
   causas_mercado: string;
+  ai_causas_mercado?: string;
   solucao_curto_prazo_mercado: string;
+  ai_solucao_curto_prazo_mercado?: string;
   solucao_medio_prazo_mercado: string;
+  ai_solucao_medio_prazo_mercado?: string;
   pitch_mercado: string;
+  ai_pitch_mercado?: string;
 }
 
 export const initialState: FormState = {

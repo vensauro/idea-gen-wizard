@@ -19,6 +19,7 @@ const AIAssistantField = ({
   label,
   value,
   onChange,
+  onAiSuggestion,
   prompt,
   placeholder,
   rows = 6,
@@ -27,6 +28,7 @@ const AIAssistantField = ({
   label: string;
   value: string;
   onChange: (val: string) => void;
+  onAiSuggestion?: (val: string) => void;
   prompt?: string;
   placeholder?: string;
   rows?: number;
@@ -43,6 +45,9 @@ const AIAssistantField = ({
     try {
       const result = await generateInsights(prompt);
       setAiSuggestion(result);
+      if (onAiSuggestion) {
+        onAiSuggestion(result);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -302,6 +307,7 @@ export default function App() {
                 instruction="Insira os insights da equipe e use a IA para ajudar a identificar causas-raiz."
                 value={formData.causas_processo}
                 onChange={v => updateForm('causas_processo', v)}
+                onAiSuggestion={v => updateForm('ai_causas_processo', v)}
                 prompt={`Contexto da empresa: ${formData.empresa_contexto}. Identificamos o seguinte problema interno: "${formData.descricao_problema_processo}". Você é especialista em operações e gestão de processos. Liste 2 possíveis causas-raiz desse problema. Para cada causa, sugira 2 formas simples de validar rapidamente em campo se essas causas são reais: o que observar, como medir e que evidências coletar.`}
                 placeholder="Liste as causas-raiz identificadas..."
                 rows={10}
@@ -312,6 +318,7 @@ export default function App() {
                 instruction="Insira os insights da equipe e use a IA para ajudar a identificar causas-raiz no mercado."
                 value={formData.causas_mercado}
                 onChange={v => updateForm('causas_mercado', v)}
+                onAiSuggestion={v => updateForm('ai_causas_mercado', v)}
                 prompt={`Contexto da empresa: ${formData.empresa_contexto}. Identificamos o seguinte desafio de mercado/produto: "${formData.descricao_desafio_mercado}". Você é especialista em estratégia B2B e inovação. Liste 2 possíveis causas-raiz desse desafio e sugira 2 formas simples para validar cada uma junto a clientes e equipe técnica.`}
                 placeholder="Liste as causas-raiz identificadas..."
                 rows={10}
@@ -332,6 +339,7 @@ export default function App() {
                   instruction="Proponha ideias rápidas de testar. Use a IA para gerar sugestões baseadas no problema e causas."
                   value={formData.solucao_curto_prazo_processo}
                   onChange={v => updateForm('solucao_curto_prazo_processo', v)}
+                  onAiSuggestion={v => updateForm('ai_solucao_curto_prazo_processo', v)}
                   prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base no problema: "${formData.descricao_problema_processo}" e nas causas: "${formData.causas_processo}", proponha 2 soluções de curto prazo (testáveis em ≤3 meses). Para cada solução, dê: (a) descrição curta; (b) 3 passos para validar a solução (prototipagem rápida); (c) recursos mínimos necessários; e (d) risco principal.`}
                   rows={8}
                 />
@@ -340,6 +348,7 @@ export default function App() {
                   instruction="Proponha ideias mais estruturais."
                   value={formData.solucao_medio_prazo_processo}
                   onChange={v => updateForm('solucao_medio_prazo_processo', v)}
+                  onAiSuggestion={v => updateForm('ai_solucao_medio_prazo_processo', v)}
                   prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base no problema: "${formData.descricao_problema_processo}" e nas causas: "${formData.causas_processo}", proponha 2 soluções de médio prazo (3-12 meses). Para cada solução, dê: (a) descrição curta; (b) 3 passos para validar a solução; (c) recursos mínimos necessários; e (d) risco principal.`}
                   rows={8}
                 />
@@ -351,6 +360,7 @@ export default function App() {
                   instruction="Proponha ideias rápidas de testar no mercado. Use a IA para gerar sugestões."
                   value={formData.solucao_curto_prazo_mercado}
                   onChange={v => updateForm('solucao_curto_prazo_mercado', v)}
+                  onAiSuggestion={v => updateForm('ai_solucao_curto_prazo_mercado', v)}
                   prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base no desafio: "${formData.descricao_desafio_mercado}" e nas causas: "${formData.causas_mercado}", proponha 2 soluções de curto prazo (≤3 meses). Para cada solução, dê: (a) descrição curta, (b) 3 passos para validação, (c) recursos mínimos e (d) risco principal.`}
                   rows={8}
                 />
@@ -359,6 +369,7 @@ export default function App() {
                   instruction="Proponha inovações de produto/serviço mais estruturais."
                   value={formData.solucao_medio_prazo_mercado}
                   onChange={v => updateForm('solucao_medio_prazo_mercado', v)}
+                  onAiSuggestion={v => updateForm('ai_solucao_medio_prazo_mercado', v)}
                   prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base no desafio: "${formData.descricao_desafio_mercado}" e nas causas: "${formData.causas_mercado}", proponha 2 soluções de médio prazo (3-12 meses). Para cada solução, dê: (a) descrição curta, (b) 3 passos para validação, (c) recursos mínimos e (d) risco principal.`}
                   rows={8}
                 />
@@ -379,6 +390,7 @@ export default function App() {
                 instruction="Preencha o template com a sua melhor ideia."
                 value={formData.pitch_processo}
                 onChange={v => updateForm('pitch_processo', v)}
+                onAiSuggestion={v => updateForm('ai_pitch_processo', v)}
                 prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base em tudo que foi discutido (Problema: ${formData.descricao_problema_processo}, Soluções: ${formData.solucao_curto_prazo_processo}), escreva um pitch de 90 segundos seguindo este template: "Para solucionar [problema] propomos [ideia priorizada], cujo diferencial principal é [o borogodó]."`}
                 rows={6}
               />
@@ -388,6 +400,7 @@ export default function App() {
                 instruction="Preencha o template com a sua melhor ideia."
                 value={formData.pitch_mercado}
                 onChange={v => updateForm('pitch_mercado', v)}
+                onAiSuggestion={v => updateForm('ai_pitch_mercado', v)}
                 prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base em tudo que foi discutido (Desafio: ${formData.descricao_desafio_mercado}, Soluções: ${formData.solucao_curto_prazo_mercado}), escreva um pitch de 90 segundos seguindo este template: "Para transformar [desafio] em resultado, propomos [ideia priorizada], cujo diferencial principal é [o borogodó]."`}
                 rows={6}
               />
@@ -411,16 +424,24 @@ ${isProcess ? formData.descricao_problema_processo : formData.descricao_desafio_
 
 ## 2. Análise de Causas
 ${isProcess ? formData.causas_processo : formData.causas_mercado}
+${isProcess && formData.ai_causas_processo ? `\n> **Insights da IA:**\n> ${formData.ai_causas_processo.replace(/\n/g, '\n> ')}` : ''}
+${!isProcess && formData.ai_causas_mercado ? `\n> **Insights da IA:**\n> ${formData.ai_causas_mercado.replace(/\n/g, '\n> ')}` : ''}
 
 ## 3. Soluções Propostas
 ### Curto Prazo
 ${isProcess ? formData.solucao_curto_prazo_processo : formData.solucao_curto_prazo_mercado}
+${isProcess && formData.ai_solucao_curto_prazo_processo ? `\n> **Insights da IA:**\n> ${formData.ai_solucao_curto_prazo_processo.replace(/\n/g, '\n> ')}` : ''}
+${!isProcess && formData.ai_solucao_curto_prazo_mercado ? `\n> **Insights da IA:**\n> ${formData.ai_solucao_curto_prazo_mercado.replace(/\n/g, '\n> ')}` : ''}
 
 ### Médio Prazo
 ${isProcess ? formData.solucao_medio_prazo_processo : formData.solucao_medio_prazo_mercado}
+${isProcess && formData.ai_solucao_medio_prazo_processo ? `\n> **Insights da IA:**\n> ${formData.ai_solucao_medio_prazo_processo.replace(/\n/g, '\n> ')}` : ''}
+${!isProcess && formData.ai_solucao_medio_prazo_mercado ? `\n> **Insights da IA:**\n> ${formData.ai_solucao_medio_prazo_mercado.replace(/\n/g, '\n> ')}` : ''}
 
 ## 4. O Pitch (A Proposta)
 > ${isProcess ? formData.pitch_processo : formData.pitch_mercado}
+${isProcess && formData.ai_pitch_processo ? `\n> **Insights da IA:**\n> ${formData.ai_pitch_processo.replace(/\n/g, '\n> ')}` : ''}
+${!isProcess && formData.ai_pitch_mercado ? `\n> **Insights da IA:**\n> ${formData.ai_pitch_mercado.replace(/\n/g, '\n> ')}` : ''}
         `;
 
         return (
