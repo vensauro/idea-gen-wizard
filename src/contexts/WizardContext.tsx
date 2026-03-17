@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { FormState, initialState, Track } from '../types';
+import { useMultiplayer } from './MultiplayerContext';
 import { Users, Target, Activity, Rocket, Presentation, FileText } from 'lucide-react';
 
 export const STEPS = [
@@ -15,7 +16,7 @@ interface WizardContextType {
   currentStep: number;
   formData: FormState;
   STEPS: typeof STEPS;
-  updateForm: (field: keyof FormState, value: string) => void;
+  updateForm: (field: keyof FormState, value: any) => void;
   nextStep: () => void;
   prevStep: () => void;
   setCurrentStep: (step: number) => void;
@@ -26,15 +27,48 @@ interface WizardContextType {
 const WizardContext = createContext<WizardContextType | undefined>(undefined);
 
 export function WizardProvider({ children }: { children: ReactNode }) {
-  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormState>(initialState);
+  const [initialized, setInitialized] = useState(false);
+  
+  const { me, room, updateRoomData } = useMultiplayer();
+  const isHost = me?.isHost;
+  const isGuest = me && !me.isHost;
 
-  const updateForm = (field: keyof FormState, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  useEffect(() => {
+    if (room && !initialized) {
+      if (room.formData) {
+        try { 
+          const parsed = JSON.parse(room.formData);
+          setFormData({ ...initialState, ...parsed }); 
+        } catch(e) {}
+      }
+      setInitialized(true);
+    } else if (room?.formData && isGuest) {
+      try { 
+        const parsed = JSON.parse(room.formData);
+        setFormData({ ...initialState, ...parsed }); 
+      } catch(e) {}
+    }
+  }, [room, initialized, isGuest]);
+
+  const currentStep = formData.currentStep || 1;
+
+  const updateForm = (field: keyof FormState, value: any) => {
+    if (isGuest) return;
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+      updateRoomData(next);
+      return next;
+    });
   };
 
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
-  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+  const setCurrentStep = (step: number) => {
+    if (isGuest) return;
+    updateForm('currentStep', step);
+  };
+
+  const nextStep = () => setCurrentStep(Math.min(currentStep + 1, STEPS.length));
+  const prevStep = () => setCurrentStep(Math.max(currentStep - 1, 1));
 
   const getStepValidationMessage = () => {
     switch (currentStep) {

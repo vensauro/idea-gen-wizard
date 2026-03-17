@@ -1,9 +1,22 @@
 import React from 'react';
-import { Activity, Target } from 'lucide-react';
+import { Activity, Target, Users } from 'lucide-react';
 import { useWizard } from '../../contexts/WizardContext';
+import { useMultiplayer } from '../../contexts/MultiplayerContext';
 
 export function Step1Identification() {
   const { formData, updateForm } = useWizard();
+  const { users, me } = useMultiplayer();
+  const isGuest = me ? !me.isHost : false;
+
+  const handleAutofillTeam = () => {
+    if (!users || users.length === 0) return;
+    
+    const names = users.map(u => u.name);
+    const formatter = new Intl.ListFormat('pt-BR', { style: 'long', type: 'conjunction' });
+    const formattedNames = formatter.format(names);
+    
+    updateForm('equipe_nomes', formattedNames);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -24,7 +37,20 @@ export function Step1Identification() {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-slate-800 mb-1">Integrantes da Equipe</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-semibold text-slate-800">Integrantes da Equipe</label>
+            {!isGuest && users.length > 0 && (
+              <button
+                type="button"
+                onClick={handleAutofillTeam}
+                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1.5 px-2.5 py-1 rounded bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                title="Preencher com os usuários conectados na sala"
+              >
+                <Users className="w-3.5 h-3.5" />
+                Preencher com presentes
+              </button>
+            )}
+          </div>
           <p className="text-xs text-slate-500 mb-2">Insira o nome ou a matrícula dos integrantes da equipe.</p>
           <textarea
             value={formData.equipe_nomes}

@@ -3,6 +3,8 @@ import { WizardProvider, useWizard } from './contexts/WizardContext';
 import { WizardHeader } from './components/wizard/WizardHeader';
 import { WizardSidebar } from './components/wizard/WizardSidebar';
 import { WizardFooter } from './components/wizard/WizardFooter';
+import { MultiplayerProvider, useMultiplayer } from './contexts/MultiplayerContext';
+import { LobbyScreen } from './components/lobby/LobbyScreen';
 
 import { Step1Identification } from './components/steps/Step1Identification';
 import { Step2ProblemFocus } from './components/steps/Step2ProblemFocus';
@@ -31,6 +33,8 @@ function MobileProgressBar() {
 
 function WizardContent() {
   const { currentStep } = useWizard();
+  const { me } = useMultiplayer();
+  const isGuest = me ? !me.isHost : false;
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -53,21 +57,44 @@ function WizardContent() {
 
         <div className="flex-1 min-w-0">
           <MobileProgressBar />
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 md:p-10">
-            {renderStepContent()}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 md:p-10 relative">
+            {isGuest && (
+              <div className="absolute top-0 inset-x-0 bg-blue-50 text-blue-800 text-sm text-center py-2 rounded-t-2xl font-medium border-b border-blue-100">
+                Lente de Visitante: Acompanhando as atualizações do Host.
+              </div>
+            )}
+            <fieldset disabled={isGuest} className={`min-w-0 ${isGuest ? 'mt-8 opacity-90' : ''}`}>
+              {renderStepContent()}
+            </fieldset>
           </div>
         </div>
       </main>
 
-      <WizardFooter />
+      <fieldset disabled={isGuest}>
+        <WizardFooter />
+      </fieldset>
     </div>
+  );
+}
+
+function AppContent() {
+  const { me } = useMultiplayer();
+
+  if (!me) {
+    return <LobbyScreen />;
+  }
+
+  return (
+    <WizardProvider>
+      <WizardContent />
+    </WizardProvider>
   );
 }
 
 export default function App() {
   return (
-    <WizardProvider>
-      <WizardContent />
-    </WizardProvider>
+    <MultiplayerProvider>
+      <AppContent />
+    </MultiplayerProvider>
   );
 }

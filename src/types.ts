@@ -1,6 +1,7 @@
 export type Track = 'processos' | 'mercado' | '';
 
 export interface FormState {
+  currentStep: number;
   empresa_contexto: string;
   equipe_nomes: string;
   equipe_areas: string;
@@ -38,6 +39,7 @@ export interface FormState {
 }
 
 export const initialState: FormState = {
+  currentStep: 1,
   empresa_contexto: '',
   equipe_nomes: '',
   equipe_areas: '',
