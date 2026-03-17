@@ -3,6 +3,7 @@ import { FormState, Track, initialState } from './types';
 import { generateInsights } from './services/ai';
 import { Loader2, Sparkles, ArrowRight, ArrowLeft, CheckCircle, FileText, Copy, Lightbulb, Users, Target, Activity, Rocket, Presentation, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import rehypeSlug from 'rehype-slug';
 import { jsPDF } from 'jspdf';
 import * as htmlToImage from 'html-to-image';
 
@@ -20,6 +21,7 @@ const AIAssistantField = ({
   value,
   onChange,
   onAiSuggestion,
+  aiValue,
   prompt,
   placeholder,
   rows = 6,
@@ -29,6 +31,7 @@ const AIAssistantField = ({
   value: string;
   onChange: (val: string) => void;
   onAiSuggestion?: (val: string) => void;
+  aiValue?: string;
   prompt?: string;
   placeholder?: string;
   rows?: number;
@@ -36,17 +39,19 @@ const AIAssistantField = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [aiSuggestion, setAiSuggestion] = useState('');
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (extraPrompt?: string) => {
     if (!prompt) return;
     setLoading(true);
     setError('');
     try {
-      const result = await generateInsights(prompt);
-      setAiSuggestion(result);
+      const finalPrompt = extraPrompt 
+        ? `${prompt}\n\nSugestões anteriores geradas por você:\n${aiValue || ''}\n\nInstrução adicional: ${extraPrompt}` 
+        : prompt;
+      const result = await generateInsights(finalPrompt);
+      const newSuggestion = extraPrompt && aiValue ? `${aiValue}\n\n---\n\n${result}` : result;
       if (onAiSuggestion) {
-        onAiSuggestion(result);
+        onAiSuggestion(newSuggestion);
       }
     } catch (err: any) {
       setError(err.message);
@@ -65,12 +70,12 @@ const AIAssistantField = ({
         {prompt && (
           <button
             type="button"
-            onClick={handleGenerate}
+            onClick={() => handleGenerate()}
             disabled={loading}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors disabled:opacity-50 shrink-0"
           >
             {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-            {loading ? 'Gerando...' : 'Gerar com IA'}
+            {loading ? 'Gerando...' : 'Obter insight'}
           </button>
         )}
       </div>
@@ -83,7 +88,7 @@ const AIAssistantField = ({
       />
       {error && <p className="text-sm text-red-600">{error}</p>}
       
-      {aiSuggestion && (
+      {aiValue && (
         <div className="mt-2 p-4 bg-indigo-50/80 border border-indigo-100 rounded-lg relative animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-indigo-800 font-semibold text-sm">
@@ -91,7 +96,7 @@ const AIAssistantField = ({
               Insights da IA
             </div>
             <button
-              onClick={() => navigator.clipboard.writeText(aiSuggestion)}
+              onClick={() => navigator.clipboard.writeText(aiValue)}
               className="text-indigo-600 hover:text-indigo-800 p-1 rounded-md hover:bg-indigo-100 transition-colors"
               title="Copiar sugestão"
             >
@@ -99,7 +104,17 @@ const AIAssistantField = ({
             </button>
           </div>
           <div className="text-sm text-slate-700 prose prose-sm prose-indigo max-w-none">
-            <ReactMarkdown>{aiSuggestion}</ReactMarkdown>
+            <ReactMarkdown>{aiValue}</ReactMarkdown>
+          </div>
+          <div className="mt-4 pt-3 border-t border-indigo-100/50 flex gap-2">
+            <button 
+              type="button"
+              onClick={() => handleGenerate("Gere mais alternativas diferentes das que você acabou de apresentar.")}
+              disabled={loading}
+              className="text-xs px-3 py-1.5 bg-white border border-indigo-200 text-indigo-700 rounded-md hover:bg-indigo-50 transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Gerando...' : 'Gerar mais alternativas'}
+            </button>
           </div>
         </div>
       )}
@@ -302,27 +317,67 @@ export default function App() {
             <h2 className="text-2xl font-bold text-slate-900 mb-2">Análise de Causas</h2>
             
             {formData.tipo_desafio === 'processos' ? (
-              <AIAssistantField
-                label="Qual é o X da questão?"
-                instruction="Insira os insights da equipe e use a IA para ajudar a identificar causas-raiz."
-                value={formData.causas_processo}
-                onChange={v => updateForm('causas_processo', v)}
-                onAiSuggestion={v => updateForm('ai_causas_processo', v)}
-                prompt={`Contexto da empresa: ${formData.empresa_contexto}. Identificamos o seguinte problema interno: "${formData.descricao_problema_processo}". Você é especialista em operações e gestão de processos. Liste 2 possíveis causas-raiz desse problema. Para cada causa, sugira 2 formas simples de validar rapidamente em campo se essas causas são reais: o que observar, como medir e que evidências coletar.`}
-                placeholder="Liste as causas-raiz identificadas..."
-                rows={10}
-              />
+              <>
+                <AIAssistantField
+                  label="Qual é o X da questão? (Suas hipóteses)"
+                  instruction="Insira os insights da equipe e use a IA para ajudar a identificar causas-raiz."
+                  value={formData.causas_processo}
+                  onChange={v => updateForm('causas_processo', v)}
+                  onAiSuggestion={v => updateForm('ai_causas_processo', v)}
+                  aiValue={formData.ai_causas_processo}
+                  prompt={`Contexto da empresa: ${formData.empresa_contexto}. Identificamos o seguinte problema interno: "${formData.descricao_problema_processo}". Você é especialista em operações e gestão de processos. Liste 2 possíveis causas-raiz desse problema. Para cada causa, sugira 2 formas simples de validar rapidamente em campo se essas causas são reais: o que observar, como medir e que evidências coletar.`}
+                  placeholder="Liste as causas-raiz identificadas..."
+                  rows={10}
+                />
+                {formData.ai_causas_processo && (
+                  <div className="mt-6 p-5 bg-slate-50 border border-slate-200 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-sm font-bold text-slate-800 mb-2">
+                      Veredito da Equipe
+                    </label>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Considerando a discussão e os insights da IA acima, quais causas raízes vocês decidiram atacar?
+                    </p>
+                    <textarea
+                      value={formData.conclusao_causas_processo}
+                      onChange={e => updateForm('conclusao_causas_processo', e.target.value)}
+                      placeholder="Nossa conclusão é que a causa principal é..."
+                      rows={4}
+                      className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                    />
+                  </div>
+                )}
+              </>
             ) : (
-              <AIAssistantField
-                label="Qual é o X da questão?"
-                instruction="Insira os insights da equipe e use a IA para ajudar a identificar causas-raiz no mercado."
-                value={formData.causas_mercado}
-                onChange={v => updateForm('causas_mercado', v)}
-                onAiSuggestion={v => updateForm('ai_causas_mercado', v)}
-                prompt={`Contexto da empresa: ${formData.empresa_contexto}. Identificamos o seguinte desafio de mercado/produto: "${formData.descricao_desafio_mercado}". Você é especialista em estratégia B2B e inovação. Liste 2 possíveis causas-raiz desse desafio e sugira 2 formas simples para validar cada uma junto a clientes e equipe técnica.`}
-                placeholder="Liste as causas-raiz identificadas..."
-                rows={10}
-              />
+              <>
+                <AIAssistantField
+                  label="Qual é o X da questão? (Suas hipóteses)"
+                  instruction="Insira os insights da equipe e use a IA para ajudar a identificar causas-raiz no mercado."
+                  value={formData.causas_mercado}
+                  onChange={v => updateForm('causas_mercado', v)}
+                  onAiSuggestion={v => updateForm('ai_causas_mercado', v)}
+                  aiValue={formData.ai_causas_mercado}
+                  prompt={`Contexto da empresa: ${formData.empresa_contexto}. Identificamos o seguinte desafio de mercado/produto: "${formData.descricao_desafio_mercado}". Você é especialista em estratégia B2B e inovação. Liste 2 possíveis causas-raiz desse desafio e sugira 2 formas simples para validar cada uma junto a clientes e equipe técnica.`}
+                  placeholder="Liste as causas-raiz identificadas..."
+                  rows={10}
+                />
+                {formData.ai_causas_mercado && (
+                  <div className="mt-6 p-5 bg-slate-50 border border-slate-200 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-sm font-bold text-slate-800 mb-2">
+                      Veredito da Equipe
+                    </label>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Considerando a discussão e os insights da IA acima, quais causas raízes vocês decidiram atacar?
+                    </p>
+                    <textarea
+                      value={formData.conclusao_causas_mercado}
+                      onChange={e => updateForm('conclusao_causas_mercado', e.target.value)}
+                      placeholder="Nossa conclusão é que a causa principal é..."
+                      rows={4}
+                      className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         );
@@ -335,44 +390,118 @@ export default function App() {
             {formData.tipo_desafio === 'processos' ? (
               <>
                 <AIAssistantField
-                  label="Soluções de Curto Prazo (≤3 meses)"
+                  label="Soluções de Curto Prazo (≤3 meses) - Suas ideias"
                   instruction="Proponha ideias rápidas de testar. Use a IA para gerar sugestões baseadas no problema e causas."
                   value={formData.solucao_curto_prazo_processo}
                   onChange={v => updateForm('solucao_curto_prazo_processo', v)}
                   onAiSuggestion={v => updateForm('ai_solucao_curto_prazo_processo', v)}
+                  aiValue={formData.ai_solucao_curto_prazo_processo}
                   prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base no problema: "${formData.descricao_problema_processo}" e nas causas: "${formData.causas_processo}", proponha 2 soluções de curto prazo (testáveis em ≤3 meses). Para cada solução, dê: (a) descrição curta; (b) 3 passos para validar a solução (prototipagem rápida); (c) recursos mínimos necessários; e (d) risco principal.`}
                   rows={8}
                 />
+                {formData.ai_solucao_curto_prazo_processo && (
+                  <div className="mb-8 p-5 bg-slate-50 border border-slate-200 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-sm font-bold text-slate-800 mb-2">
+                      Veredito da Equipe - Curto Prazo
+                    </label>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Qual solução de curto prazo vocês decidiram priorizar?
+                    </p>
+                    <textarea
+                      value={formData.conclusao_ideias_curto_processo}
+                      onChange={e => updateForm('conclusao_ideias_curto_processo', e.target.value)}
+                      placeholder="Nossa conclusão é..."
+                      rows={4}
+                      className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                    />
+                  </div>
+                )}
+
                 <AIAssistantField
-                  label="Soluções de Médio Prazo (3–12 meses)"
+                  label="Soluções de Médio Prazo (3–12 meses) - Suas ideias"
                   instruction="Proponha ideias mais estruturais."
                   value={formData.solucao_medio_prazo_processo}
                   onChange={v => updateForm('solucao_medio_prazo_processo', v)}
                   onAiSuggestion={v => updateForm('ai_solucao_medio_prazo_processo', v)}
+                  aiValue={formData.ai_solucao_medio_prazo_processo}
                   prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base no problema: "${formData.descricao_problema_processo}" e nas causas: "${formData.causas_processo}", proponha 2 soluções de médio prazo (3-12 meses). Para cada solução, dê: (a) descrição curta; (b) 3 passos para validar a solução; (c) recursos mínimos necessários; e (d) risco principal.`}
                   rows={8}
                 />
+                {formData.ai_solucao_medio_prazo_processo && (
+                  <div className="mb-6 p-5 bg-slate-50 border border-slate-200 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-sm font-bold text-slate-800 mb-2">
+                      Veredito da Equipe - Médio Prazo
+                    </label>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Qual solução de médio prazo vocês decidiram priorizar?
+                    </p>
+                    <textarea
+                      value={formData.conclusao_ideias_medio_processo}
+                      onChange={e => updateForm('conclusao_ideias_medio_processo', e.target.value)}
+                      placeholder="Nossa conclusão é..."
+                      rows={4}
+                      className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                    />
+                  </div>
+                )}
               </>
             ) : (
               <>
                 <AIAssistantField
-                  label="Soluções de Curto Prazo (≤3 meses)"
+                  label="Soluções de Curto Prazo (≤3 meses) - Suas ideias"
                   instruction="Proponha ideias rápidas de testar no mercado. Use a IA para gerar sugestões."
                   value={formData.solucao_curto_prazo_mercado}
                   onChange={v => updateForm('solucao_curto_prazo_mercado', v)}
                   onAiSuggestion={v => updateForm('ai_solucao_curto_prazo_mercado', v)}
+                  aiValue={formData.ai_solucao_curto_prazo_mercado}
                   prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base no desafio: "${formData.descricao_desafio_mercado}" e nas causas: "${formData.causas_mercado}", proponha 2 soluções de curto prazo (≤3 meses). Para cada solução, dê: (a) descrição curta, (b) 3 passos para validação, (c) recursos mínimos e (d) risco principal.`}
                   rows={8}
                 />
+                {formData.ai_solucao_curto_prazo_mercado && (
+                  <div className="mb-8 p-5 bg-slate-50 border border-slate-200 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-sm font-bold text-slate-800 mb-2">
+                      Veredito da Equipe - Curto Prazo
+                    </label>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Qual solução de curto prazo vocês decidiram priorizar?
+                    </p>
+                    <textarea
+                      value={formData.conclusao_ideias_curto_mercado}
+                      onChange={e => updateForm('conclusao_ideias_curto_mercado', e.target.value)}
+                      placeholder="Nossa conclusão é..."
+                      rows={4}
+                      className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                    />
+                  </div>
+                )}
+
                 <AIAssistantField
-                  label="Soluções de Médio Prazo (3–12 meses)"
+                  label="Soluções de Médio Prazo (3–12 meses) - Suas ideias"
                   instruction="Proponha inovações de produto/serviço mais estruturais."
                   value={formData.solucao_medio_prazo_mercado}
                   onChange={v => updateForm('solucao_medio_prazo_mercado', v)}
                   onAiSuggestion={v => updateForm('ai_solucao_medio_prazo_mercado', v)}
+                  aiValue={formData.ai_solucao_medio_prazo_mercado}
                   prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base no desafio: "${formData.descricao_desafio_mercado}" e nas causas: "${formData.causas_mercado}", proponha 2 soluções de médio prazo (3-12 meses). Para cada solução, dê: (a) descrição curta, (b) 3 passos para validação, (c) recursos mínimos e (d) risco principal.`}
                   rows={8}
                 />
+                {formData.ai_solucao_medio_prazo_mercado && (
+                  <div className="mb-6 p-5 bg-slate-50 border border-slate-200 rounded-xl animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-sm font-bold text-slate-800 mb-2">
+                      Veredito da Equipe - Médio Prazo
+                    </label>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Qual solução de médio prazo vocês decidiram priorizar?
+                    </p>
+                    <textarea
+                      value={formData.conclusao_ideias_medio_mercado}
+                      onChange={e => updateForm('conclusao_ideias_medio_mercado', e.target.value)}
+                      placeholder="Nossa conclusão é..."
+                      rows={4}
+                      className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -391,6 +520,7 @@ export default function App() {
                 value={formData.pitch_processo}
                 onChange={v => updateForm('pitch_processo', v)}
                 onAiSuggestion={v => updateForm('ai_pitch_processo', v)}
+                aiValue={formData.ai_pitch_processo}
                 prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base em tudo que foi discutido (Problema: ${formData.descricao_problema_processo}, Soluções: ${formData.solucao_curto_prazo_processo}), escreva um pitch de 90 segundos seguindo este template: "Para solucionar [problema] propomos [ideia priorizada], cujo diferencial principal é [o borogodó]."`}
                 rows={6}
               />
@@ -401,6 +531,7 @@ export default function App() {
                 value={formData.pitch_mercado}
                 onChange={v => updateForm('pitch_mercado', v)}
                 onAiSuggestion={v => updateForm('ai_pitch_mercado', v)}
+                aiValue={formData.ai_pitch_mercado}
                 prompt={`Contexto da empresa: ${formData.empresa_contexto}. Com base em tudo que foi discutido (Desafio: ${formData.descricao_desafio_mercado}, Soluções: ${formData.solucao_curto_prazo_mercado}), escreva um pitch de 90 segundos seguindo este template: "Para transformar [desafio] em resultado, propomos [ideia priorizada], cujo diferencial principal é [o borogodó]."`}
                 rows={6}
               />
@@ -410,6 +541,14 @@ export default function App() {
 
       case 6:
         const isProcess = formData.tipo_desafio === 'processos';
+        
+        const aiCausas = isProcess ? formData.ai_causas_processo : formData.ai_causas_mercado;
+        const aiCurto = isProcess ? formData.ai_solucao_curto_prazo_processo : formData.ai_solucao_curto_prazo_mercado;
+        const aiMedio = isProcess ? formData.ai_solucao_medio_prazo_processo : formData.ai_solucao_medio_prazo_mercado;
+        const aiPitch = isProcess ? formData.ai_pitch_processo : formData.ai_pitch_mercado;
+        
+        const hasAnyAi = aiCausas || aiCurto || aiMedio || aiPitch;
+
         const docContent = `
 # Documento de Ideação: ${isProcess ? 'Inovação em Processos' : 'Inovação em Produtos/Mercado'}
 
@@ -423,25 +562,44 @@ export default function App() {
 ${isProcess ? formData.descricao_problema_processo : formData.descricao_desafio_mercado}
 
 ## 2. Análise de Causas
+**Hipóteses Iniciais:**
 ${isProcess ? formData.causas_processo : formData.causas_mercado}
-${isProcess && formData.ai_causas_processo ? `\n> **Insights da IA:**\n> ${formData.ai_causas_processo.replace(/\n/g, '\n> ')}` : ''}
-${!isProcess && formData.ai_causas_mercado ? `\n> **Insights da IA:**\n> ${formData.ai_causas_mercado.replace(/\n/g, '\n> ')}` : ''}
+${aiCausas ? `\n*[Ver Insights da IA no Apêndice](#anexo-1-insights-causas)*` : ''}
+
+**🎯 Conclusão da Equipe:**
+${isProcess ? formData.conclusao_causas_processo : formData.conclusao_causas_mercado}
 
 ## 3. Soluções Propostas
 ### Curto Prazo
+**Ideias Iniciais:**
 ${isProcess ? formData.solucao_curto_prazo_processo : formData.solucao_curto_prazo_mercado}
-${isProcess && formData.ai_solucao_curto_prazo_processo ? `\n> **Insights da IA:**\n> ${formData.ai_solucao_curto_prazo_processo.replace(/\n/g, '\n> ')}` : ''}
-${!isProcess && formData.ai_solucao_curto_prazo_mercado ? `\n> **Insights da IA:**\n> ${formData.ai_solucao_curto_prazo_mercado.replace(/\n/g, '\n> ')}` : ''}
+${aiCurto ? `\n*[Ver Insights da IA no Apêndice](#anexo-2-insights-curto-prazo)*` : ''}
+
+**🎯 Veredito da Equipe (Curto Prazo):**
+${isProcess ? formData.conclusao_ideias_curto_processo : formData.conclusao_ideias_curto_mercado}
 
 ### Médio Prazo
+**Ideias Iniciais:**
 ${isProcess ? formData.solucao_medio_prazo_processo : formData.solucao_medio_prazo_mercado}
-${isProcess && formData.ai_solucao_medio_prazo_processo ? `\n> **Insights da IA:**\n> ${formData.ai_solucao_medio_prazo_processo.replace(/\n/g, '\n> ')}` : ''}
-${!isProcess && formData.ai_solucao_medio_prazo_mercado ? `\n> **Insights da IA:**\n> ${formData.ai_solucao_medio_prazo_mercado.replace(/\n/g, '\n> ')}` : ''}
+${aiMedio ? `\n*[Ver Insights da IA no Apêndice](#anexo-3-insights-medio-prazo)*` : ''}
+
+**🎯 Veredito da Equipe (Médio Prazo):**
+${isProcess ? formData.conclusao_ideias_medio_processo : formData.conclusao_ideias_medio_mercado}
 
 ## 4. O Pitch (A Proposta)
 > ${isProcess ? formData.pitch_processo : formData.pitch_mercado}
-${isProcess && formData.ai_pitch_processo ? `\n> **Insights da IA:**\n> ${formData.ai_pitch_processo.replace(/\n/g, '\n> ')}` : ''}
-${!isProcess && formData.ai_pitch_mercado ? `\n> **Insights da IA:**\n> ${formData.ai_pitch_mercado.replace(/\n/g, '\n> ')}` : ''}
+${aiPitch ? `\n*[Ver Insights da IA no Apêndice](#anexo-4-insights-pitch)*` : ''}
+
+${hasAnyAi ? `
+---
+
+## Apêndice: Insights da IA
+
+${aiCausas ? `### Anexo 1: Insights Causas\n${aiCausas}\n` : ''}
+${aiCurto ? `### Anexo 2: Insights Curto Prazo\n${aiCurto}\n` : ''}
+${aiMedio ? `### Anexo 3: Insights Medio Prazo\n${aiMedio}\n` : ''}
+${aiPitch ? `### Anexo 4: Insights Pitch\n${aiPitch}\n` : ''}
+` : ''}
         `;
 
         return (
@@ -459,7 +617,7 @@ ${!isProcess && formData.ai_pitch_mercado ? `\n> **Insights da IA:**\n> ${formDa
             
             <div id="pdf-content" className="bg-white border border-slate-200 rounded-xl p-6 md:p-8 shadow-sm prose prose-slate max-w-none">
               <div className="markdown-body">
-                <ReactMarkdown>{docContent}</ReactMarkdown>
+                <ReactMarkdown rehypePlugins={[rehypeSlug]}>{docContent}</ReactMarkdown>
               </div>
             </div>
           </div>
