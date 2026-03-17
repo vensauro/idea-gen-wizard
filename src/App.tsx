@@ -190,12 +190,57 @@ export default function App() {
     }
   };
 
-  const isStepValid = () => {
-    if (currentStep === 1) {
-      return formData.empresa_contexto.trim() !== '' && formData.equipe_nomes.trim() !== '' && formData.tipo_desafio !== '';
+  const getStepValidationMessage = () => {
+    switch (currentStep) {
+      case 1:
+        if (!formData.empresa_contexto.trim() || !formData.equipe_nomes.trim() || !formData.tipo_desafio) {
+          return "Preencha todos os campos e selecione o tipo de desafio.";
+        }
+        break;
+      case 2:
+        if (formData.tipo_desafio === 'processos' && !formData.descricao_problema_processo.trim()) {
+          return "Descreva o problema atual.";
+        }
+        if (formData.tipo_desafio === 'mercado' && !formData.descricao_desafio_mercado.trim()) {
+          return "Descreva o desafio de mercado.";
+        }
+        break;
+      case 3:
+        if (formData.tipo_desafio === 'processos') {
+          if (!formData.causas_processo.trim()) return "Preencha suas hipóteses iniciais.";
+          if (!formData.ai_causas_processo) return "Gere os insights da IA para continuar.";
+          if (!formData.conclusao_causas_processo.trim()) return "Preencha o veredito da equipe.";
+        } else {
+          if (!formData.causas_mercado.trim()) return "Preencha suas hipóteses iniciais.";
+          if (!formData.ai_causas_mercado) return "Gere os insights da IA para continuar.";
+          if (!formData.conclusao_causas_mercado.trim()) return "Preencha o veredito da equipe.";
+        }
+        break;
+      case 4:
+        if (formData.tipo_desafio === 'processos') {
+          if (!formData.solucao_curto_prazo_processo.trim() || !formData.solucao_medio_prazo_processo.trim()) return "Preencha suas ideias de curto e médio prazo.";
+          if (!formData.ai_solucao_curto_prazo_processo || !formData.ai_solucao_medio_prazo_processo) return "Gere os insights da IA para curto e médio prazo.";
+          if (!formData.conclusao_ideias_curto_processo.trim() || !formData.conclusao_ideias_medio_processo.trim()) return "Preencha os vereditos da equipe para curto e médio prazo.";
+        } else {
+          if (!formData.solucao_curto_prazo_mercado.trim() || !formData.solucao_medio_prazo_mercado.trim()) return "Preencha suas ideias de curto e médio prazo.";
+          if (!formData.ai_solucao_curto_prazo_mercado || !formData.ai_solucao_medio_prazo_mercado) return "Gere os insights da IA para curto e médio prazo.";
+          if (!formData.conclusao_ideias_curto_mercado.trim() || !formData.conclusao_ideias_medio_mercado.trim()) return "Preencha os vereditos da equipe para curto e médio prazo.";
+        }
+        break;
+      case 5:
+        if (formData.tipo_desafio === 'processos') {
+          if (!formData.pitch_processo.trim()) return "Preencha o pitch.";
+          if (!formData.ai_pitch_processo) return "Gere os insights da IA para o pitch.";
+        } else {
+          if (!formData.pitch_mercado.trim()) return "Preencha o pitch.";
+          if (!formData.ai_pitch_mercado) return "Gere os insights da IA para o pitch.";
+        }
+        break;
     }
-    return true; // Add more validation if needed
+    return null;
   };
+
+  const isStepValid = () => getStepValidationMessage() === null;
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -718,18 +763,25 @@ ${aiPitch ? `### Anexo 4: Insights Pitch\n${aiPitch}\n` : ''}
           </button>
           
           {currentStep < STEPS.length ? (
-            <button
-              onClick={nextStep}
-              disabled={!isStepValid()}
-              className={`inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white rounded-xl transition-all shadow-sm ${
-                !isStepValid()
-                  ? 'bg-indigo-300 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-md hover:-translate-y-0.5'
-              }`}
-            >
-              Próximo
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-3">
+              {!isStepValid() && (
+                <span className="text-xs text-amber-600 font-medium animate-in fade-in hidden sm:block">
+                  {getStepValidationMessage()}
+                </span>
+              )}
+              <button
+                onClick={nextStep}
+                disabled={!isStepValid()}
+                className={`inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white rounded-xl transition-all shadow-sm ${
+                  !isStepValid()
+                    ? 'bg-indigo-300 cursor-not-allowed'
+                    : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-md hover:-translate-y-0.5'
+                }`}
+              >
+                Próximo
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           ) : (
             <div className="w-[104px]"></div> /* Placeholder to keep "Voltar" aligned left when there's no "Próximo" */
           )}
